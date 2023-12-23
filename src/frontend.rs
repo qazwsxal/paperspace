@@ -1,11 +1,10 @@
 
 
 use axum::{
-    body::{boxed, Empty, Full},
+    body::{Body, Bytes},
     http::{header, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Response},
 };
-
 use include_dir::{include_dir, Dir};
 
 
@@ -22,7 +21,7 @@ pub async fn frontend(uri: Uri) -> impl IntoResponse {
     match file {
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(boxed(Empty::new()))
+            .body(Body::empty())
             .unwrap(),
         Some(file) => Response::builder()
             .status(StatusCode::OK)
@@ -30,7 +29,8 @@ pub async fn frontend(uri: Uri) -> impl IntoResponse {
                 header::CONTENT_TYPE,
                 HeaderValue::from_str(mime_type.as_ref()).unwrap(),
             )
-            .body(boxed(Full::from(file.contents())))
+            .body(Body::from(
+                Bytes::from_static(file.contents())))
             .unwrap(),
     }
 }

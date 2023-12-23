@@ -3,9 +3,10 @@ use open;
 
 use std::net::SocketAddr;
 
-use tokio::signal;
+use tokio::{signal, net::TcpListener};
 
 mod frontend;
+// mod db;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,13 +14,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new().fallback(frontend::frontend);
 
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 4000)); // User configurable?
-
+    let addr = SocketAddr::from(([127, 0, 0, 1], 4000)); // User configurable?
+    let listener = TcpListener::bind(addr).await?;
     let server = tokio::spawn(async move {
-        axum::Server::bind(&addr)
-            .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-            .with_graceful_shutdown(shutdown_signal())
-            .await
+        axum::serve(listener, app)
+            .await.unwrap()
     });
     // open::that("http://127.0.0.1:4000/")?;
     open::that("http://127.0.0.1:4000/")?; // Testing FSN update mechanism
