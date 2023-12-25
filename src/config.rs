@@ -2,7 +2,7 @@ use platform_dirs::AppDirs;
 use serde::{Deserialize, Serialize};
 use std::default::Default;
 use std::fs::{self};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use toml;
 
 //TOML crate can't serialize Enums, so be careful here.

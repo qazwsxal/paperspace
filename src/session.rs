@@ -1,12 +1,8 @@
 use axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
-    response::IntoResponse,
-    routing::get,
-    Router,
+    extract::ws::{Message, WebSocket},
 };
 use tokio::{
-    sync::{broadcast, mpsc, oneshot},
-    task::JoinHandle,
+    sync::{broadcast, mpsc},
 };
 
 use futures_util::{
@@ -26,7 +22,7 @@ impl SessionActor {
         let (broadcast_sender, _broadcast_recv) = broadcast::channel(32);
         let broadcast_send = broadcast_sender.clone();
         let (mpsc_send, mpsc_recv) = mpsc::channel(32);
-        let new_conn_handle = tokio::spawn(async move {
+        let _new_conn_handle = tokio::spawn(async move {
             while let Some(new_ws) = websocket_source.recv().await {
                 build_ws_tasks(new_ws, &broadcast_sender, mpsc_send.clone())
             }
