@@ -1,14 +1,10 @@
-
-
-
-
+use crate::config::SqliteConfig;
 use sqlx::{
     self,
     migrate::{MigrateError, Migrator},
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
     SqlitePool,
 };
-use crate::config::SqliteConfig;
 pub mod queries;
 
 static MIG: Migrator = sqlx::migrate!("./migrations/");

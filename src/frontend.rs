@@ -1,17 +1,14 @@
-
-
 use axum::{
-    body::{Body},
+    body::Body,
     http::{header, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Response},
 };
 use include_dir::{include_dir, Dir};
 
-
 static FRONTEND_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/frontend/build");
 pub async fn frontend(uri: Uri) -> impl IntoResponse {
     // Ugly "no path means index.html" hack
-    let path = match uri.path().trim_start_matches("/") {
+    let path = match uri.path().trim_start_matches('/') {
         "" => "index.html",
         x => x,
     };

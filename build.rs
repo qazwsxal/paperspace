@@ -8,9 +8,9 @@ fn main() {
 
     // specific weirdness on windows, need workaround
     #[cfg(windows)]
-    pub const NPM: &'static str = "npm.cmd";
+    pub const NPM: &str = "npm.cmd";
     #[cfg(not(windows))]
-    pub const NPM: &'static str = "npm";
+    pub const NPM: &str = "npm";
 
     // Can't pass --prefix to npm.cmd for some reason, so cd to where the frontend's based
     env::set_current_dir("frontend").unwrap();

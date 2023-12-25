@@ -99,7 +99,7 @@ async fn broadcast_to_websocket(
         } else {
             break ws_send_result;
         }
-        if let Err(_) = ws_send_result {
+        if ws_send_result.is_err() {
             break ws_send_result;
         }
     }
