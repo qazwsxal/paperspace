@@ -1,12 +1,15 @@
 use axum::{self, Router};
-use open;
+
 
 use std::net::SocketAddr;
 
 use tokio::{signal, net::TcpListener};
 
-mod frontend;
-// mod db;
+pub mod frontend;
+pub mod db;
+pub mod config;
+pub mod state;
+pub mod session;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,8 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         axum::serve(listener, app)
             .await.unwrap()
     });
-    // open::that("http://127.0.0.1:4000/")?;
-    open::that("http://127.0.0.1:4000/")?; // Testing FSN update mechanism
+    open::that("http://127.0.0.1:4000/")?; // Open webUI
     let (_result,) = tokio::join!(server);
     Ok(())
 }

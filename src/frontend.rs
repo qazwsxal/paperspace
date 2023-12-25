@@ -1,7 +1,7 @@
 
 
 use axum::{
-    body::{Body, Bytes},
+    body::{Body},
     http::{header, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Response},
 };
@@ -29,8 +29,7 @@ pub async fn frontend(uri: Uri) -> impl IntoResponse {
                 header::CONTENT_TYPE,
                 HeaderValue::from_str(mime_type.as_ref()).unwrap(),
             )
-            .body(Body::from(
-                Bytes::from_static(file.contents())))
+            .body(Body::from(file.contents()))
             .unwrap(),
     }
 }
