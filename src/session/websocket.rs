@@ -10,7 +10,7 @@ pub enum Response {
 pub enum Request {
     Increment(),
     Decrement(),
-    Get(),
+    Reset(),
 }
 
 

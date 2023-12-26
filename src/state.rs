@@ -11,7 +11,9 @@ use uuid;
 
 
 
-type Sessions = Arc<RwLock<HashMap<uuid::Uuid, SessionActorHandle>>>;
+// pub type Sessions = Arc<RwLock<HashMap<uuid::Uuid, SessionActorHandle>>>;
+pub type Sessions = Arc<RwLock<HashMap<String, SessionActorHandle>>>;
+#[derive(Debug, Clone)]
 pub struct PSState {
     pool: SqlitePool,
     active_sessions: Sessions,

@@ -1,9 +1,5 @@
-use axum::{
-    extract::ws::{Message, WebSocket},
-};
-use tokio::{
-    sync::{broadcast, mpsc},
-};
+use axum::extract::ws::{Message, WebSocket};
+use tokio::sync::{broadcast, mpsc};
 
 use futures_util::{
     sink::SinkExt,
@@ -41,12 +37,11 @@ impl SessionActor {
             match request {
                 websocket::Request::Increment() => self.session_state += 1,
                 websocket::Request::Decrement() => self.session_state -= 1,
-                websocket::Request::Get() => {
-                    result = self
-                        .broadcast_send
-                        .send(websocket::Response::Value(self.session_state));
-                }
-            };
+                websocket::Request::Reset() => self.session_state = 0,
+            }
+            result = self
+                .broadcast_send
+                .send(websocket::Response::Value(self.session_state));
             if result.is_err() {
                 break;
             }
@@ -104,6 +99,7 @@ async fn broadcast_to_websocket(
         }
     }
 }
+#[derive(Debug, Clone)]
 pub struct SessionActorHandle {
     pub sender: mpsc::Sender<WebSocket>,
 }
