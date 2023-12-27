@@ -1,5 +1,4 @@
 use axum::{
-    debug_handler,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         ConnectInfo, Query, State,
@@ -12,12 +11,11 @@ use axum::{
 use axum_extra::TypedHeader;
 use tokio::{net::TcpListener, signal, sync::mpsc};
 
-use std::ops::ControlFlow;
-use std::{borrow::Cow, collections::HashMap};
-use std::{net::SocketAddr, path::PathBuf};
+use std::{collections::HashMap};
+use std::{net::SocketAddr};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{util::SubscriberInitExt};
 
 pub mod config;
 pub mod db;
@@ -27,14 +25,14 @@ pub mod state;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // console_subscriber::init();
-    tracing_subscriber::registry()
-    .with(
-        tracing_subscriber::EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| "paperspace=debug,tower_http=debug".into()),
-    )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    console_subscriber::init();
+    // tracing_subscriber::registry()
+    //     .with(
+    //         tracing_subscriber::EnvFilter::try_from_default_env()
+    //             .unwrap_or_else(|_| "paperspace=debug,tower_http=debug".into()),
+    //     )
+    //     .with(tracing_subscriber::fmt::layer())
+    //     .init();
     let app = Router::new()
         .fallback(frontend::frontend)
         .route("/api/ws", get(ws_handler))
@@ -59,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .unwrap()
     });
-    open::that("http://127.0.0.1:4000/session.html?uuid=test")?; // Open webUI
+    open::that("http://127.0.0.1:4000/session?uuid=test")?; // Open webUI
     let (_result,) = tokio::join!(server);
     Ok(())
 }
@@ -108,13 +106,16 @@ async fn ws_handler(
     let uuid_entry = params.get("uuid");
     if let Some(uuid) = uuid_entry {
         let get_handle = sessions.read().unwrap().get(uuid).cloned();
-        let socket_sender: mpsc::Sender<WebSocket> = if let Some(session_handle) = get_handle {
-            session_handle.sender.clone()
-        } else {
-            let handle = session::SessionActorHandle::new().await;
-            let sender = handle.sender.clone();
-            sessions.write().unwrap().insert(uuid.clone(), handle);
-            sender
+        let socket_sender = match get_handle {
+            Some(session_handle) if !session_handle.sender.is_closed() => {
+                session_handle.sender.clone()
+            }
+            _ => {
+                let handle = session::SessionActorHandle::new().await;
+                let sender = handle.sender.clone();
+                sessions.write().unwrap().insert(uuid.clone(), handle);
+                sender
+            }
         };
         ws.on_upgrade(move |socket| infalliable_send(socket_sender, socket))
     } else {
