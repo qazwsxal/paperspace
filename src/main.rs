@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .unwrap()
     });
-    open::that("http://127.0.0.1:4000/session?uuid=test")?; // Open webUI
+    let _ = open::that("http://127.0.0.1:4000/session?uuid=test"); // Open webUI, ok if it fails.
     let (_result,) = tokio::join!(server);
     Ok(())
 }
