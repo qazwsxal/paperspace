@@ -15,7 +15,7 @@ use std::{collections::HashMap};
 use std::{net::SocketAddr};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use tracing_subscriber::{util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub mod config;
 pub mod db;
@@ -25,14 +25,14 @@ pub mod state;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    console_subscriber::init();
-    // tracing_subscriber::registry()
-    //     .with(
-    //         tracing_subscriber::EnvFilter::try_from_default_env()
-    //             .unwrap_or_else(|_| "paperspace=debug,tower_http=debug".into()),
-    //     )
-    //     .with(tracing_subscriber::fmt::layer())
-    //     .init();
+    // console_subscriber::init();
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "paperspace=debug,tower_http=debug".into()),
+        )
+    .with(tracing_subscriber::fmt::layer())
+    .init();
     let app = Router::new()
         .fallback(frontend::frontend)
         .route("/api/ws", get(ws_handler))

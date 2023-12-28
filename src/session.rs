@@ -1,104 +1,120 @@
+use std::process::exit;
+
 use axum::extract::ws::{Message, WebSocket};
-use futures_util::{
-    sink::SinkExt,
-    stream::{SplitSink, SplitStream, StreamExt},
+use futures::stream::{TryStream, TryStreamExt};
+use futures::{
+    sink::{Sink, SinkExt},
+    stream::{self, SplitSink, SplitStream, Stream, StreamExt},
+};
+use tokio::{
+    sync::broadcast::error::SendError,
+    time::{sleep, Duration},
 };
 use tokio::{
     sync::{broadcast, mpsc},
     task::JoinSet,
 };
-use tokio::{
-    time::{sleep, Duration},
-};
 use tokio_util::sync::CancellationToken;
+
 pub mod state;
+use state::State;
 
 pub struct SessionActor {
     broadcast_send: broadcast::Sender<state::Response>,
+    mpsc_send: mpsc::Sender<state::Request>,
     mpsc_recv: mpsc::Receiver<state::Request>,
-    session_state: i32,
+    websocket_source: mpsc::Receiver<WebSocket>,
+    state: state::Counter,
+    tasks: JoinSet<()>,
 }
 
 impl SessionActor {
     fn new(websocket_source: mpsc::Receiver<WebSocket>) -> Self {
-        let (broadcast_sender, _broadcast_recv) = broadcast::channel(32);
-        let broadcast_send = broadcast_sender.clone();
+        let (broadcast_send, _broadcast_recv) = broadcast::channel::<state::Response>(256);
         let (mpsc_send, mpsc_recv) = mpsc::channel(32);
-        let _new_conn_handle = tokio::spawn(async move {
-            websocket_handler(websocket_source, broadcast_sender, mpsc_send).await;
-        });
-
+        let state = state::Counter::default();
         Self {
             broadcast_send,
+            mpsc_send,
             mpsc_recv,
-            session_state: 0,
+            websocket_source,
+            state,
+            tasks: JoinSet::<()>::new(),
         }
     }
 
     async fn run(&mut self) {
-        let mut result; // Default vale
-        while let Some(request) = self.mpsc_recv.recv().await {
-            match request {
-                state::Request::Increment() => self.session_state += 1,
-                state::Request::Decrement() => self.session_state -= 1,
-                state::Request::Reset() => self.session_state = 0,
-            }
-            result = self
-                .broadcast_send
-                .send(state::Response::Value(self.session_state));
-            if result.is_err() {
-                break;
-            }
-        }
-    }
-}
-
-async fn websocket_handler(
-    mut websocket_source: mpsc::Receiver<WebSocket>,
-    broadcast_sender: broadcast::Sender<state::Response>,
-    mpsc_send: mpsc::Sender<state::Request>,
-) {
-    let mut tasks = JoinSet::<()>::new();
-    // Make sure we have at least one websocket in the task set
-    if let Some(new_ws) = websocket_source.recv().await {
-        build_ws_tasks(new_ws, &broadcast_sender, mpsc_send.clone(), &mut tasks)
-    } else {
-        return;
-    }
-    loop {
-        tokio::select! {
-            recv_ws = websocket_source.recv() => {
-                if let Some(new_ws) = recv_ws{
-                    build_ws_tasks(new_ws, &broadcast_sender, mpsc_send.clone(), &mut tasks)
-                } else {break}
-            },
-            // Break out of loop if we run out of tasks or get a join error
-            taskres = tasks.join_next() => {
-                if let Some(task_return) = taskres {
-                    if task_return.is_err() {
+        let mut established = false;
+        let mut exiting = false;
+        loop {
+            let timeout = sleep(Duration::from_secs(15));
+            tokio::select! {
+                // Recieve a message and handle it.
+                mpsc_msg = self.mpsc_recv.recv() => {
+                    if let Some(request) = mpsc_msg {
+                        if self.handle_request(request).await.is_err() {break}
+                    } else {
                         break
                     }
-                } else {
-                    break
-                }
-            },
+                },
+                // Set up a new connection.
+                opt_new_ws = self.websocket_source.recv() =>  {
+                    if let Some(new_ws) = opt_new_ws {
+                        self.handle_websocket(new_ws).await;
+                        // We have a new connection! so we're established and can't be exiting.
+                        established = true;
+                        exiting = false;
+                    } else {
+                        break
+                    }
+                },
+                // If we have no tasks flag us as exiting, if we *then* timeout - shut down the session
+                task = self.tasks.join_next(), if established && !exiting => if task.is_none() {exiting = true},
+                _ = timeout, if exiting => {break}
+            }
+        }
+        println!("shutdown not handled yet!")
+    }
+
+    async fn handle_request(
+        &mut self,
+        request: state::Request,
+    ) -> Result<usize, SendError<state::Response>> {
+        let mut responses = self.state.update(request);
+        let mut broadcast_result = 0;
+        loop {
+            if let Some(response) = responses.next().await {
+                broadcast_result = self.broadcast_send.send(response)?;
+            } else {
+                break Ok(broadcast_result);
+            }
         }
     }
-}
 
-fn build_ws_tasks(
-    new_ws: WebSocket,
-    broadcast_sender: &broadcast::Sender<state::Response>,
-    mpsc_send: mpsc::Sender<state::Request>,
-    join_set: &mut JoinSet<()>,
-) {
-    let (ws_sender, ws_receiver) = new_ws.split();
-    let bc_reciever = broadcast_sender.subscribe();
-    let token = CancellationToken::new();
-    let token_2 = token.clone();
-
-    join_set.spawn(async move { broadcast_to_websocket(bc_reciever, ws_sender, token).await });
-    join_set.spawn(async move { websocket_to_mpsc(ws_receiver, mpsc_send, token_2).await });
+    async fn handle_websocket(&mut self, new_ws: WebSocket) {
+        // session actor pauses during this function so we can't accidentally recieve a message 
+        // before sending the full client initialisation stream.
+        let bc_reciever = self.broadcast_send.subscribe(); 
+        let (mut ws_sender, ws_receiver) = new_ws.split();
+        let token = CancellationToken::new();
+        let token_2 = token.clone();
+        // get a vector of responses that describes the current state.
+        let session_init = self.state.dump();
+        let mpsc_send = self.mpsc_send.clone();
+        self.tasks.spawn(async move {
+            // Send messages to catch up client with session
+            let _ = ws_sender
+                .send_all(
+                    &mut stream::iter(session_init)
+                        .map(|resp| Ok(Message::Text(serde_json::to_string(&resp).unwrap()))),
+                )
+                .await;
+            // Now handle as normal.
+            broadcast_to_websocket(bc_reciever, ws_sender, token).await
+        });
+        self.tasks
+            .spawn(async move { websocket_to_mpsc(ws_receiver, mpsc_send, token_2).await });
+    }
 }
 
 async fn websocket_to_mpsc(
@@ -128,6 +144,7 @@ async fn websocket_to_mpsc(
         }
     }
     cancel_token.cancel();
+    println!("closed mpsc")
 }
 
 async fn broadcast_to_websocket(
@@ -139,20 +156,18 @@ async fn broadcast_to_websocket(
     loop {
         tokio::select! {
             Ok(x) = bc_reciever.recv() => {
-                let ws_message = match x {
-                    state::Response::Close() => Message::Close(None),
-                    state::Response::Value(x) => Message::Text(format!("{}",x)),
-                };
+                let ws_message = Message::Text(serde_json::to_string(&x).unwrap());
                 ws_send_result = ws_sender.send(ws_message).await;
             },
             _ = cancel_token.cancelled() => break,
             else => {cancel_token.cancel(); break},
         }
         if ws_send_result.is_err() {
-            cancel_token.cancel();
             break;
         }
     }
+    cancel_token.cancel();
+    println!("closed broadcast")
 }
 #[derive(Debug, Clone)]
 pub struct SessionActorHandle {
