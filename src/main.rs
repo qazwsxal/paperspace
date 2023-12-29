@@ -1,22 +1,9 @@
-use axum::{
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        ConnectInfo, Query, State,
-    },
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
-    Router,
-};
-use axum_extra::TypedHeader;
-use state::PSState;
-use tokio::{net::TcpListener, signal, sync::mpsc};
+use tokio::{net::TcpListener, signal};
 
-use std::{collections::HashMap};
-use std::{net::SocketAddr};
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use std::net::SocketAddr;
+// use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub mod api;
 pub mod config;
@@ -53,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn shutdown_signal() {
+async fn _shutdown_signal() {
     let ctrl_c = async {
         signal::ctrl_c()
             .await

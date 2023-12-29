@@ -1,12 +1,8 @@
-use std::process::exit;
-
 use axum::extract::ws::{Message, WebSocket};
-use futures::stream::{TryStream, TryStreamExt};
 use futures::{
-    sink::{Sink, SinkExt},
-    stream::{self, SplitSink, SplitStream, Stream, StreamExt},
+    sink::SinkExt,
+    stream::{self, SplitSink, SplitStream,  StreamExt},
 };
-use sqlx::SqlitePool;
 use tokio::sync::oneshot;
 use tokio::{
     sync::broadcast::error::SendError,

@@ -9,7 +9,6 @@ pub mod queries;
 
 static MIG: Migrator = sqlx::migrate!("./migrations/");
 
-pub(crate) const BIND_LIMIT: usize = 32766; //SQLITE_LIMIT_VARIABLE_NUMBER default value.
 
 pub async fn init(config: &SqliteConfig) -> Result<SqlitePool, MigrateError> {
     let c_opts = SqliteConnectOptions::new()

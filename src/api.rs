@@ -1,19 +1,16 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        ConnectInfo, Query, State,
+        Query, State,
     },
     http::StatusCode,
     response::IntoResponse,
     routing::get,
     Router,
 };
-use axum_extra::TypedHeader;
-use sqlx::IntoArguments;
-use tokio::{net::TcpListener, signal, sync::mpsc};
+use tokio::sync::mpsc;
 
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::state::PSState;
@@ -34,17 +31,9 @@ pub async fn init(config: config::Config) -> Router {
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    user_agent: Option<TypedHeader<headers::UserAgent>>,
     Query(params): Query<HashMap<String, String>>,
     State(app_state): State<PSState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
-    let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
-        user_agent.to_string()
-    } else {
-        String::from("Unknown browser")
-    };
-    println!("`{user_agent}` at {addr} connected.");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
     let uuid_entry = params.get("uuid");

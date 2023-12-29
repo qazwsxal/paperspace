@@ -1,14 +1,11 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-};
-
 use sqlx::{
-    self, query_builder::QueryBuilder, sqlite::SqliteQueryResult, types::chrono::NaiveDate, Sqlite,
+    self, Sqlite,
     Transaction,
 };
 
 use crate::session::state::Counter;
+
+// pub(crate) const BIND_LIMIT: usize = 32766; //SQLITE_LIMIT_VARIABLE_NUMBER default value.
 
 pub async fn get_session(uuid: &str, mut tx: Transaction<'_, Sqlite>) -> Option<Counter> {
     sqlx::query_as!(Counter, "select `value` from `sessions` where id = ?", uuid)

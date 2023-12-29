@@ -1,4 +1,4 @@
-use futures::stream::{self, Iter, Stream};
+use futures::stream::{self, Stream};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

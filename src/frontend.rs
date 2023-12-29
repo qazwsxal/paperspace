@@ -10,7 +10,7 @@ static FRONTEND_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/frontend/build"
 // Hack to turn /$uri into checks for /$uri, /$uri.html, /$uri/index.html
 static FORMAT_SUFFIXES: &[&str] = &["", ".html", "/index.html"];
 pub async fn frontend(uri: Uri) -> impl IntoResponse {
-    let path = uri.path().strip_prefix("/").unwrap();
+    let path = uri.path().strip_prefix('/').unwrap();
     for suffix in FORMAT_SUFFIXES.iter() {
         let newpath = format!("{}{}", path, suffix);
         let file = FRONTEND_DIR.get_file(&newpath);
