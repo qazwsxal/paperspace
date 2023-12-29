@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 
 use crate::config;
 use crate::db;
@@ -15,8 +15,8 @@ use sqlx::SqlitePool;
 pub type Sessions = Arc<RwLock<HashMap<String, SessionActorHandle>>>;
 #[derive(Debug, Clone)]
 pub struct PSState {
-    pool: SqlitePool,
-    active_sessions: Sessions,
+    pub pool: SqlitePool,
+    pub active_sessions: Sessions,
 }
 
 impl PSState {

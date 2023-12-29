@@ -6,6 +6,8 @@ use futures::{
     sink::{Sink, SinkExt},
     stream::{self, SplitSink, SplitStream, Stream, StreamExt},
 };
+use sqlx::SqlitePool;
+use tokio::sync::oneshot;
 use tokio::{
     sync::broadcast::error::SendError,
     time::{sleep, Duration},
@@ -19,6 +21,8 @@ use tokio_util::sync::CancellationToken;
 pub mod state;
 use state::State;
 
+use self::state::Counter;
+
 pub struct SessionActor {
     broadcast_send: broadcast::Sender<state::Response>,
     mpsc_send: mpsc::Sender<state::Request>,
@@ -29,10 +33,9 @@ pub struct SessionActor {
 }
 
 impl SessionActor {
-    fn new(websocket_source: mpsc::Receiver<WebSocket>) -> Self {
+    fn new(state: state::Counter, websocket_source: mpsc::Receiver<WebSocket>) -> Self {
         let (broadcast_send, _broadcast_recv) = broadcast::channel::<state::Response>(256);
         let (mpsc_send, mpsc_recv) = mpsc::channel(32);
-        let state = state::Counter::default();
         Self {
             broadcast_send,
             mpsc_send,
@@ -169,15 +172,20 @@ async fn broadcast_to_websocket(
     cancel_token.cancel();
     println!("closed broadcast")
 }
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SessionActorHandle {
     pub sender: mpsc::Sender<WebSocket>,
 }
 impl SessionActorHandle {
-    pub async fn new() -> SessionActorHandle {
+    pub async fn new() -> (SessionActorHandle, oneshot::Receiver<Counter>) {
+        let state = state::Counter::default();
+        Self::load(state).await
+    }
+    pub async fn load(state: state::Counter) -> (SessionActorHandle, oneshot::Receiver<Counter>) {
         let (sender, receiver) = mpsc::channel(32);
-        let mut actor = SessionActor::new(receiver);
-        tokio::spawn(async move { actor.run().await });
-        Self { sender }
+        let mut actor = SessionActor::new(state, receiver);
+        let (os_send, os_recv) = oneshot::channel();
+        tokio::spawn(async move { actor.run().await; os_send.send(actor.state)});
+        (Self { sender }, os_recv)
     }
 }

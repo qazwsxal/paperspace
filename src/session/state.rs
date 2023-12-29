@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Response {
-    Value(i32),
+    Value(i64),
 }
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Request {
@@ -14,7 +14,7 @@ pub enum Request {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct Counter {
-    value: i32,
+    pub value: i64,
 }
 
 impl State for Counter {
