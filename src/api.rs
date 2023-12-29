@@ -63,10 +63,8 @@ async fn init_session(app_state: PSState, uuid: &str) -> mpsc::Sender<WebSocket>
     let tx = app_state.pool.begin().await.unwrap();
     let (handle, exit_state) =
         if let Some(session_state) = db::queries::get_session(uuid, tx).await {
-            println!("loaded session");
             session::SessionActorHandle::load(session_state).await
         } else {
-            println!("new session");
             session::SessionActorHandle::new().await
         };
     let sender = handle.sender.clone();

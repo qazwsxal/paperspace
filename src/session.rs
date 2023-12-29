@@ -72,7 +72,6 @@ impl SessionActor {
                 _ = timeout, if exiting => {break}
             }
         }
-        println!("shutdown not handled yet!")
     }
 
     async fn handle_request(
@@ -143,7 +142,6 @@ async fn websocket_to_mpsc(
         }
     }
     cancel_token.cancel();
-    println!("closed mpsc")
 }
 
 async fn broadcast_to_websocket(
@@ -166,7 +164,6 @@ async fn broadcast_to_websocket(
         }
     }
     cancel_token.cancel();
-    println!("closed broadcast")
 }
 #[derive(Debug)]
 pub struct SessionActorHandle {
