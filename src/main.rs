@@ -1,9 +1,9 @@
 use tokio::{net::TcpListener, signal};
 
 use std::net::SocketAddr;
-// use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub mod api;
 pub mod config;
@@ -15,13 +15,13 @@ pub mod state;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     console_subscriber::init();
-    // tracing_subscriber::registry()
-    //     .with(
-    //         tracing_subscriber::EnvFilter::try_from_default_env()
-    //             .unwrap_or_else(|_| "paperspace=debug,tower_http=debug".into()),
-    //     )
-    // .with(tracing_subscriber::fmt::layer())
-    // .init();
+    tracing_subscriber::registry()
+        // .with(
+        //     tracing_subscriber::EnvFilter::try_from_default_env()
+        //         .unwrap_or_else(|_| "paperspace=debug,tower_http=debug".into()),
+        // )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
     let app_config = config::Config::default();
     let app = api::init(app_config).await;
 
