@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 use std::collections::HashMap;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use crate::state::PSState;
+use crate::app::PSState;
 use crate::{config, session};
 use crate::{db, frontend};
 

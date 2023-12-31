@@ -10,6 +10,6 @@
 
 </script>
 
-<button on:click={decrement}>
+<button class="btn join-item" on:click={decrement}>
 	-
 </button>

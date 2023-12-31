@@ -10,6 +10,6 @@
 
 </script>
 
-<button on:click={increment}>
+<button class="btn join-item" on:click={increment}>
 	+
 </button>

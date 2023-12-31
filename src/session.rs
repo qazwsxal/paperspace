@@ -17,19 +17,19 @@ use tokio_util::sync::CancellationToken;
 pub mod state;
 use state::State;
 
-use self::state::Counter;
+use self::state::SessionState;
 
 pub struct SessionActor {
     broadcast_send: broadcast::Sender<state::Response>,
     mpsc_send: mpsc::Sender<state::Request>,
     mpsc_recv: mpsc::Receiver<state::Request>,
     websocket_source: mpsc::Receiver<WebSocket>,
-    state: state::Counter,
+    state: state::SessionState,
     tasks: JoinSet<()>,
 }
 
 impl SessionActor {
-    fn new(state: state::Counter, websocket_source: mpsc::Receiver<WebSocket>) -> Self {
+    fn new(state: state::SessionState, websocket_source: mpsc::Receiver<WebSocket>) -> Self {
         let (broadcast_send, _broadcast_recv) = broadcast::channel::<state::Response>(256);
         let (mpsc_send, mpsc_recv) = mpsc::channel(32);
         Self {
@@ -170,11 +170,11 @@ pub struct SessionActorHandle {
     pub sender: mpsc::Sender<WebSocket>,
 }
 impl SessionActorHandle {
-    pub async fn new() -> (SessionActorHandle, oneshot::Receiver<Counter>) {
-        let state = state::Counter::default();
+    pub async fn new() -> (SessionActorHandle, oneshot::Receiver<SessionState>) {
+        let state = state::SessionState::default();
         Self::load(state).await
     }
-    pub async fn load(state: state::Counter) -> (SessionActorHandle, oneshot::Receiver<Counter>) {
+    pub async fn load(state: state::SessionState) -> (SessionActorHandle, oneshot::Receiver<SessionState>) {
         let (sender, receiver) = mpsc::channel(32);
         let mut actor = SessionActor::new(state, receiver);
         let (os_send, os_recv) = oneshot::channel();

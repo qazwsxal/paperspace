@@ -1,5 +1,4 @@
 <script>
 	import '../app.pcss';
 </script>
-
-<slot />
+<div class="flex w-full h-full place-items-center"><slot /></div>

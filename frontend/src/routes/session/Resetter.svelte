@@ -10,6 +10,6 @@
 
 </script>
 
-<button on:click={reset}>
+<button class="btn join-item" on:click={reset}>
 	0
 </button>
