@@ -14,7 +14,7 @@ pub mod state;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    console_subscriber::init();
+    // console_subscriber::init();
     tracing_subscriber::registry()
         // .with(
         //     tracing_subscriber::EnvFilter::try_from_default_env()
